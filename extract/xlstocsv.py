@@ -10,30 +10,33 @@ import csv, sys
 src_fn = '../federalelections2012.xls'
 src_sheet = '2012 US House & Senate Resuts'
 
-# Open the sheet we care about
+### File IO
 wb = xlrd.open_workbook(src_fn)
 sheet = wb.sheet_by_name(src_sheet)
 rows = sheet.get_rows()
+out = csv.writer(sys.stdout, dialect='excel-tab', quoting=csv.QUOTE_NONE, quotechar=None)
 
-# First row is spreadsheet schema, capture names of columns
+### CSV schema / headers
+# Source schema
 headers = [str(cell.value) for cell in next(rows)]
 col_index = {headers[i] : i for i in range(len(headers))}
+# Output schema
+out.writerow(['State', 'District', 'First Name', 'Last Name', 'Party', 'Votes', 'Vote fraction', 'Winner'])
 
 def v(r, name):
     "Extract the value for row r with column name n. Coerces to string."
     return str(r[col_index[name]].value).strip()
 
-# Iterate through every row of data
-
+### Iterate through every row of data
 for row in rows:
     # See if a useful district is named in column D; this contains vote data
     district = v(row, 'D')
     if len(district) > 0 and district != 'H':
-        # Extract votes and fractVote as numbers
+        # Looks like a useful record; emit the columns we care about
         votes = row[col_index['GENERAL VOTES ']].value
         fractVote = row[col_index['GENERAL %']].value
         if fractVote != "" and fractVote > 0:
-            print(
+            out.writerow([
                 v(row, 'STATE ABBREVIATION'),
                 v(row, 'D'),
                 v(row, 'CANDIDATE NAME (First)'),
@@ -41,6 +44,4 @@ for row in rows:
                 v(row, 'PARTY'),
                 "%d" % votes,
                 "%.5f" % fractVote,
-                v(row, 'GE WINNER INDICATOR'))
-
-# Write out a CSV file
+                v(row, 'GE WINNER INDICATOR')])
