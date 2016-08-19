@@ -3,12 +3,72 @@
 <head> <meta charset="utf-8">
 <title>TEMPLATE</title>
 <style type="text/css">
- 
+body { font-size: 24px; font-family: sans-serif; margin-top: 50px; margin-left: 50px; }
+form { display: inline }
+input { font-size: 20px; }
 </style>
+<script src="jquery-3.1.0.min.js"></script>
 </head>
  
 <body>
+
+Enter your zip code: <form onsubmit="lookup(); return false;"><input id="zipcode" type="text" value=""></form>
+
+
+<div id="output"></div>
+
+<div style="padding-top: 200px; font-size: 14px; position: fixed; bottom: 10px;">
+    A strawman for a project. Let's throw this away!<br>
+    Please ignore the ugly presentation, I'm not a UI person.</div>
+
+
 <script type="text/javascript">
- 
+
+var vote_data = null;   // AJAX load a dict of district -> vote results
+var zip_data = null;    // AJAX load a dict of zip code -> district
+
+// Respond to user query based on zip code
+function lookup() {
+    $('#output').empty();
+
+    // Get the query text, look up the vote record
+    var zipcode = $('#zipcode').val();
+    var district = zip_data[zipcode];
+    var votes = vote_data[district];
+
+    // Error handling
+    if (typeof(district) == "undefined" || typeof("votes") == "undefined") {
+        $('#output').append('<p>No results for ' + zipcode + '. Try 92117</p>');
+        return;
+    }
+
+    // Display the district and vote data
+    $('#output').append('<p>You are in district ' + district + '</p>');
+    for (var i = 0; i < votes.length; i++) {
+        var v = votes[i];
+        var p = (v['Vote fraction'] * 100).toFixed(2);
+        $('#output').append(p + '% ' + '(' + v['Party'] + ') ' + v['First Name'] + ' ' + v['Last Name'] + '<br>');
+    }
+    $('#output').append('</p>');
+
+    // Determine if it was a close vote. (Like zip 92117, CA-52)
+    if (votes.length > 1) {
+        // Assumes the votes are sorted in the array
+        top_diff = votes[0]['Vote fraction'] - votes[1]['Vote fraction']
+        if (top_diff < 0.04) {
+            $('#output').append('<p>That was a close vote!</p>');
+        }
+    }
+}
+$(document).ready(function() {
+    // Load the data 
+    $.get("2012-congress.json", function(d) {
+        vote_data = d;
+    });
+    $.get("zipcode-to-district.json", function(d) {
+        zip_data = d;
+    });
+});
 </script>
+
 </body></html>
