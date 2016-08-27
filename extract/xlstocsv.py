@@ -7,7 +7,7 @@ This script emits general election results for House distracts and senate races"
 import xlrd
 import csv, sys
 
-src_fn = '../federalelections2012.xls'
+src_fn = '../data/federalelections2012.xls'
 src_sheet = '2012 US House & Senate Resuts'
 
 ### File IO
