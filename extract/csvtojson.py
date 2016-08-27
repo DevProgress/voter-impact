@@ -11,7 +11,7 @@ import csv, json, sys, collections
 vote_data = collections.defaultdict(list)
 
 ### Read the TSV in, build up the vote_data structure
-data_fn = "../out.tsv"
+data_fn = "../data/2012-congress.tsv"
 with open(data_fn) as fp:
     reader = csv.DictReader(fp, dialect="excel-tab")
     for row in reader:
