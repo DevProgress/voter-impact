@@ -9,6 +9,7 @@ import csv, sys
 
 
 for src_fn, dst_fn, src_sheets in (
+    ('../data/results10.xls', '../data/2010-congress.tsv', ('2010 US House & Senate Results',)),
     ('../data/federalelections2012.xls', '../data/2012-congress.tsv', ('2012 US House & Senate Resuts',)),
     ('../data/results14.xls', '../data/2014-congress.tsv', ('2014 US Senate Results by State', '2014 US House Results by State')),
 
@@ -38,13 +39,24 @@ for src_fn, dst_fn, src_sheets in (
             ### Iterate through every row of data
             for row in rows:
                 # See if a useful district is named in column D; this contains vote data
-                district = v(row, 'D')
+                if 'D' in col_index:
+                    district = v(row, 'D')
+                else:
+                    district = v(row, 'DISTRICT')
+
                 if district.endswith('.0'):
                     # Hack for districts marked as numbers, not strings
                     district = district[:-2]
                 if len(district) > 0 and district != 'H':
                     # Looks like a useful record; emit the columns we care about
-                    votes = row[col_index['GENERAL VOTES ']].value
+                    if 'GENERAL VOTES ' in col_index:
+                        votes = row[col_index['GENERAL VOTES ']].value
+                    else:
+                        votes = row[col_index['GENERAL ']].value
+                    try:
+                        winner_indicator = v(row, 'GE WINNER INDICATOR')
+                    except:
+                        winner_indicator = ''
                     fractVote = row[col_index['GENERAL %']].value
                     if fractVote != "" and fractVote > 0:
                         out.writerow([
@@ -55,4 +67,4 @@ for src_fn, dst_fn, src_sheets in (
                             v(row, 'PARTY'),
                             "%d" % votes,
                             "%.5f" % fractVote,
-                            v(row, 'GE WINNER INDICATOR')])
+                            winner_indicator])
