@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Voter Impact</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="https://npmcdn.com/leaflet@1.0.0-rc.3/dist/leaflet.css" />
+	<style>
+		#map {
+			position: absolute;
+			top: 0;
+			left: 0;
+			bottom: 0;
+			right: 0;
+		}
+
+		.search {
+			position: absolute;
+			top: 1rem;
+			right: 1rem;
+			padding: 1rem;
+			background-color: #fff;
+			z-index: 400; /* Required to get above the map */
+			box-shadow: 0.25rem 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+		}
+	</style>
+	<!--[if lt IE 9]>
+		<script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+		<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+	<![endif]-->
+</head>
+<body>
+	<div id="map"></div>
+	<div class="search">
+		<form class="form-inline" id="form">
+			<div class="form-group">
+				<label for="zipcode">Find local races:</label>
+				<input type="text" class="form-control" id="zipcode" placeholder="ZIP Code" />
+			</div>
+			<button type="submit" class="btn btn-default">Search</button>
+			<button type="reset" class="btn btn-default" id="reset" disabled>Reset</button>
+		</form>
+	</div>
+
+	<script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
+	<script src="https://npmcdn.com/leaflet@1.0.0-rc.3/dist/leaflet.js"></script>
+	<script>
+		var map, markers, vote_data, dist2zip_data, zip2dist_data, zip2coords_data, close_races;
+
+		$(function() {
+			$.when(
+				// Load the data
+				$.get('2012-congress.json', function(d) {
+					vote_data = d;
+				}),
+				$.get('district-to-zipcode.json', function(d) {
+					dist2zip_data = d;
+				}),
+				$.get('zipcode-to-district.json', function(d) {
+					zip2dist_data = d;
+				}),
+				$.get('zipcode-to-coords.json', function(d) {
+					zip2coords_data = d;
+				})
+			).done(function () {
+				// Build a list of race details
+				close_races = [];
+
+				$.each(vote_data, function(key, value) {
+					value.sort(function(a, b) {
+						return parseInt(b.Votes) - parseInt(a.Votes);
+					});
+
+					if (typeof value[0] === 'undefined' || typeof value[1] === 'undefined') {
+						return true;
+					}
+
+					coordinates = zip2coords_data[dist2zip_data[key]];
+
+					// Ignore any race without coordinates
+					// or coordinates outside the contiguous US
+					if (
+						typeof coordinates === 'undefined' ||
+						coordinates.latitude < 24.7433195 ||
+						coordinates.latitude > 49.3457868 ||
+						coordinates.longitude < -124.7844079 ||
+						coordinates.longitude > -66.9513812
+					) {
+						return true;
+					}
+
+					close_races.push({
+						'coordinates': coordinates,
+						'difference': parseInt(value[0]['Votes']) - parseInt(value[1]['Votes']),
+						'district_id': key,
+						'winner': value[0]['First Name'] + ' ' + value[0]['Last Name']
+					});
+				});
+
+				// Sort this list by how close the races were
+				close_races.sort(function(a, b) {
+					return parseInt(a.difference) - parseInt(b.difference);
+				});
+
+				// Initialize the map
+				map = L.map('map').setView([37.8282, -98.5795]);
+
+				// Add the tile layer
+				L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);
+
+				// Add the marker layer
+				markers = new L.LayerGroup();
+				map.addLayer(markers);
+
+				resetMap();
+			});
+		});
+
+		$('#form').submit(function(e) {
+			e.preventDefault();
+
+			markers.clearLayers();
+			$('#reset').prop('disabled', false);
+
+			var zipcode = $('#zipcode').val();
+			var district = zip2dist_data[zipcode];
+			var votes = vote_data[district];
+
+			if (typeof votes === 'undefined') {
+				alert('Hm, we couldn\'t find any information for that ZIP code.');
+				return;
+			}
+
+			var coordinates = zip2coords_data[zipcode];
+
+			map.setView([coordinates.latitude, coordinates.longitude], 10);
+
+			var marker = addMarker({
+				'coordinates': coordinates,
+				'difference': parseInt(votes[0]['Votes']) - parseInt(votes[1]['Votes']),
+				'district_id': district,
+				'winner': votes[0]['First Name'] + ' ' + votes[0]['Last Name']
+			});
+
+			marker.openPopup();
+
+			markers.addLayer(marker);
+		});
+
+		$('#reset').click(function(e) {
+			e.preventDefault();
+
+			$('#zipcode').val('');
+			$('#reset').prop('disabled', true);
+
+			markers.clearLayers();
+			resetMap();
+		});
+
+		function addMarker(district) {
+			var is_close = '';
+			if (district.difference < 10000) {
+				is_close = 'only ';
+			}
+
+			return L.marker([district.coordinates.latitude, district.coordinates.longitude])
+				.addTo(map)
+				.bindPopup(
+					district.winner +
+					' won the ' +
+					district.district_id +
+					' congressional district race in 2012 by ' +
+					is_close +
+					Number(district.difference).toLocaleString('en') +
+					' votes!'
+				);
+		}
+
+		function resetMap() {
+			// Add markers for the closest 25 races to the map
+			var i = 0;
+			while (i < 25) {
+				var marker = addMarker(close_races[i]);
+
+				// Open the popup for the closest race
+				if (i == 0) {
+					marker.openPopup();
+				}
+
+				markers.addLayer(marker);
+
+				i++;
+			}
+
+			// Fit the contiguous US within the viewport
+			map.fitBounds([
+				[49.3457868, -124.7844079],
+				[24.7433195, -66.9513812]
+			], {
+				padding: [50, 50]
+			});
+		}
+	</script>
+</body>
+</html>
