@@ -41,6 +41,9 @@ for src_fn, dst_fn, src_sheets in (
             for row in rows:
                 # See if a useful district is named in column D; this contains vote data
                 district = v(row, 'D')
+                if district.endswith('.0'):
+                    # Hack for districts marked as numbers, not strings
+                    district = district[:-2]
                 if len(district) > 0 and district != 'H':
                     # Looks like a useful record; emit the columns we care about
                     votes = row[col_index['GENERAL VOTES ']].value
@@ -48,7 +51,7 @@ for src_fn, dst_fn, src_sheets in (
                     if fractVote != "" and fractVote > 0:
                         out.writerow([
                             v(row, 'STATE ABBREVIATION'),
-                            v(row, 'D'),
+                            district,
                             v(row, 'CANDIDATE NAME (First)'),
                             v(row, 'CANDIDATE NAME (Last)'),
                             v(row, 'PARTY'),
