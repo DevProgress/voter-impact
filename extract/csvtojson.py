@@ -5,7 +5,7 @@ that's easy to query in Javascript"""
 
 import csv, json, sys, collections
 
-for year in (2010, 2012, 2014):
+for year in (2008, 2010, 2012, 2014):
     print('Converting %s' % year)
     ### Data structure we'll be dumping.
     ### Dictionary that maps "state-district" to an array of vote data
