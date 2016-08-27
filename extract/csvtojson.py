@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-"""Convert 2012 congressional district vote data to a JSON form
+"""Convert congressional district vote data from CSV to a JSON form
 that's easy to query in Javascript"""
 
 import csv, json, sys, collections

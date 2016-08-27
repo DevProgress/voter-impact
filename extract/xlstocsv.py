@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-"""Create a CSV showing 2014 Congress election results
-Source data: http://www.fec.gov/pubrec/fe2014/federalelections2014.shtml
+"""Create a CSV showing Congress election results
+Source data: http://www.fec.gov/pubrec/electionresults.shtml
 This script emits general election results for House distracts and senate races"""
-
-# this code was created with cut-and-paste from xlstocsv.py. Needs refactoring :-(
 
 import xlrd
 import csv, sys
